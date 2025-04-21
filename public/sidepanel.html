@@ -6,24 +6,15 @@
     <link rel="stylesheet" href="sidepanel.css" />
   </head>
   <body>
-    <div class="app">
-      <p class="app-heading">Tabs</p>
-
-      <ul id="tabs-list" class="tabs-list"></ul>
-
-      <hr class="divider" />
-
-      <p class="title">Chrome Extension is Ready!</p>
-      <p class="subtitle">Start by updating <code>sidepanel.html</code></p>
+    <div class="summarize-content">
+      <div class="loading-placeholder">
+        <p class="loading-title">Generating summary...</p>
+        <div class="shimmer-line" style="width: 95%;"></div>
+        <div class="shimmer-line" style="width: 100%;"></div>
+        <div class="shimmer-line" style="width: 90%;"></div>
+        <div class="shimmer-line" style="width: 80%;"></div>
+      </div>
     </div>
-
     <script src="sidepanel.js"></script>
-
-    <!--
-      This HTML file opens when you click on icon from the toolbar.
-
-      To begin the development, run `npm run watch`.
-      To create a production bundle, use `npm run build`.
-    -->
   </body>
 </html>

@@ -1,74 +1,52 @@
 'use strict';
 
 import './sidepanel.css';
+import { marked } from 'marked';
 
-(function () {
-  function initList(tabs) {
-    const list = document.getElementById('tabs-list');
+(async function () {
+  document.addEventListener('DOMContentLoaded', async () => {
+    const [contentBox] = document.getElementsByClassName('summarize-content');
 
-    const listItem = tabs.map((tab) => {
-      return `
-      <li>
-        <div data-tab-id="${tab.id}" class="tab-container">
-          ${
-            tab.favIconUrl
-              ? `<img src="${tab.favIconUrl}" alt="" class="tab-image" />`
-              : '<span class="tab-image tab-image-placeholder">&#x2750;</span>'
+    try {
+      // Get the active tab
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      const activeTabId = tabs[0]?.id;
+      const activeTabUrl = tabs[0]?.url;
+
+      if (!activeTabId) {
+        throw new Error('No active tab found.');
+      }
+
+      // Send message to the service worker for processing
+      const response = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+          {
+            task: 'summarize',
+            tabId: activeTabId,
+            webUrl: activeTabUrl,
+          },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              reject(new Error(chrome.runtime.lastError.message));
+            } else {
+              resolve(response);
+            }
           }
-          <p class="tab-title" title="${tab.title}">${tab.title}</p>
-        </div>
-      </li>
-      `;
-    });
+        );
+      });
 
-    list.innerHTML = listItem.join('\n');
-
-    list.addEventListener('click', (event) => {
-      if (event.target && event.target.closest('.tab-container')) {
-        const tabId = event.target
-          .closest('.tab-container')
-          .getAttribute('data-tab-id');
-
-        chrome.tabs.update(Number(tabId), {
-          active: true,
-        });
+      if (response.error) {
+        throw new Error(response.error);
       }
-    });
-  }
 
-  function setupTabList() {
-    chrome.tabs.query(
-      {
-        currentWindow: true,
-      },
-      (tabs) => {
-        initList(tabs);
-      }
-    );
-  }
+      // Convert Markdown to HTML safely
+      const markdownHTML = marked.parse(response.summary);
 
-  function setupTabListeners() {
-    chrome.tabs.onCreated.addListener(setupTabList);
-    chrome.tabs.onMoved.addListener(setupTabList);
-    chrome.tabs.onRemoved.addListener(setupTabList);
-    chrome.tabs.onUpdated.addListener(setupTabList);
-  }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    setupTabList();
-    setupTabListeners();
-  });
-
-  // Communicate with background file by sending a message
-  chrome.runtime.sendMessage(
-    {
-      type: 'GREETINGS',
-      payload: {
-        message: 'Hello, my name is Syd. I am from SidePanel.',
-      },
-    },
-    (response) => {
-      console.log(response.message);
+      // Inject Markdown-rendered HTML
+      contentBox.innerHTML = `<div class="markdown-content">${markdownHTML}</div>`;
+    } catch (error) {
+      console.error('Error:', error.message);
+      contentBox.innerHTML = `<pre class="error-text">${error.message}</pre>`;
     }
-  );
+  });
 })();
