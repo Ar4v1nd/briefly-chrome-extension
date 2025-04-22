@@ -37,6 +37,15 @@ async function getLastModifiedTimestamp(page) {
     );
     return meta ? meta.getAttribute('content') : null;
   });
+  // If not found, get the last modified timestamp from article published_time meta tag
+  if (!lastModified) {
+    lastModified = await page.evaluate(() => {
+      const meta = document.head.querySelector(
+        'meta[property="article:published_time"]'
+      );
+      return meta ? meta.getAttribute('content') : null;
+    });
+  }
   // If not found, fallback to the last modified date in the HTTP headers
   if (!lastModified) {
     lastModified = await page.evaluate(async () => {
@@ -66,7 +75,7 @@ async function handleWebPage(tabId, url, sendResponse) {
     const pdfBase64 = bytesToBase64(pdf);
     const lastModified = await getLastModifiedTimestamp(page);
     const lambdaResponse = await fetch(
-      'https://t2zkpumsqx3zrd5ypxljjjpokq0bppdb.lambda-url.ap-south-1.on.aws/',
+      'https://v3r5sdafz2wfoodjgbhdqnucvy0zqtpz.lambda-url.ap-south-1.on.aws/',
       {
         method: 'POST',
         headers: {
@@ -113,7 +122,7 @@ async function handleWebPage(tabId, url, sendResponse) {
 async function handleYouTubeVideo(url, sendResponse) {
   try {
     const lambdaResponse = await fetch(
-      'https://t2zkpumsqx3zrd5ypxljjjpokq0bppdb.lambda-url.ap-south-1.on.aws/',
+      'https://v3r5sdafz2wfoodjgbhdqnucvy0zqtpz.lambda-url.ap-south-1.on.aws/',
       {
         method: 'POST',
         headers: {
