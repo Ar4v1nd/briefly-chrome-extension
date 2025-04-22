@@ -48,6 +48,106 @@ async function getLastModifiedTimestamp(page) {
   return lastModified;
 }
 
+async function handleWebPage(tabId, url, sendResponse) {
+  let crxApp, page;
+
+  try {
+    crxApp = await crx.start();
+    // Tries to connect to the active tab, or creates a new one
+    page = await crxApp.attach(tabId).catch(() => crxApp.newPage());
+    // Ensures the page is navigated to the correct URL
+    await expect(page).toHaveURL(url);
+    // Wait for page to fully load
+    await page.waitForLoadState('networkidle');
+    // Handles lazy loading
+    await forceLoadLazyImages(page);
+    // Export page as PDF
+    const pdf = await exportAsPdf(page);
+    const pdfBase64 = bytesToBase64(pdf);
+    const lastModified = await getLastModifiedTimestamp(page);
+    const lambdaResponse = await fetch(
+      'https://t2zkpumsqx3zrd5ypxljjjpokq0bppdb.lambda-url.ap-south-1.on.aws/',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+        },
+        body: JSON.stringify({
+          webUrl: url,
+          content: pdfBase64,
+          lastModified: lastModified,
+        }),
+      }
+    );
+    const statusCode = lambdaResponse.status;
+    if (statusCode === 200) {
+      const summary = await lambdaResponse.text();
+      sendResponse({
+        success: true,
+        summary: summary,
+      });
+    } else {
+      const error = await lambdaResponse.json();
+      console.log('Error from Lambda:', JSON.stringify(error));
+      sendResponse({
+        success: false,
+        error: error.message,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    sendResponse({
+      success: false,
+      error: error.message,
+    });
+  } finally {
+    if (typeof crxApp !== 'undefined' && typeof page !== 'undefined') {
+      // page stays open, but no longer controlled by playwright
+      await crxApp.detach(page);
+      // releases chrome.debugger
+      await crxApp.close();
+    }
+  }
+}
+
+async function handleYouTubeVideo(url, sendResponse) {
+  try {
+    const lambdaResponse = await fetch(
+      'https://t2zkpumsqx3zrd5ypxljjjpokq0bppdb.lambda-url.ap-south-1.on.aws/',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          videoUrl: url,
+        }),
+      }
+    );
+    const statusCode = lambdaResponse.status;
+    if (statusCode === 200) {
+      const summary = await lambdaResponse.text();
+      sendResponse({
+        success: true,
+        summary: summary,
+      });
+    } else {
+      const error = await lambdaResponse.json();
+      console.log('Error from Lambda:', JSON.stringify(error));
+      sendResponse({
+        success: false,
+        error: error.message,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    sendResponse({
+      success: false,
+      error: error.message,
+    });
+  }
+}
+
 // Extension lifecycle events
 chrome.runtime.onInstalled.addListener((details) => {
   const { reason, previousVersion } = details;
@@ -67,65 +167,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('Background message received:', JSON.stringify(message));
     const tabId = message.tabId;
     const url = message.webUrl;
-    var crxApp, page;
 
     (async () => {
-      crxApp = await crx.start();
-      try {
-        // Tries to connect to the active tab, or creates a new one
-        page = await crxApp.attach(tabId).catch(() => crxApp.newPage());
-        // Ensures the page is navigated to the correct URL
-        await expect(page).toHaveURL(url);
-        // Wait for page to fully load
-        await page.waitForLoadState('networkidle');
-        // Handles lazy loading
-        await forceLoadLazyImages(page);
-        // Export page as PDF
-        const pdf = await exportAsPdf(page);
-        const pdfBase64 = bytesToBase64(pdf);
-        const lastModified = await getLastModifiedTimestamp(page);
-        const lambdaResponse = await fetch(
-          'https://t2zkpumsqx3zrd5ypxljjjpokq0bppdb.lambda-url.ap-south-1.on.aws/',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/octet-stream',
-            },
-            body: JSON.stringify({
-              webUrl: url,
-              content: pdfBase64,
-              lastModified: lastModified,
-            }),
-          }
-        );
-        const statusCode = lambdaResponse.status;
-        if (statusCode === 200) {
-          const summary = await lambdaResponse.text();
-          sendResponse({
-            success: true,
-            summary: summary,
-          });
-        } else {
-          const error = await lambdaResponse.json();
-          console.log('Error from Lambda:', JSON.stringify(error));
-          sendResponse({
-            success: false,
-            error: error.message,
-          });
-        }
-      } catch (error) {
-        console.log(error);
-        sendResponse({
-          success: false,
-          error: error.message,
-        });
-      } finally {
-        if (typeof crxApp !== 'undefined' && typeof page !== 'undefined') {
-          // page stays open, but no longer controlled by playwright
-          await crxApp.detach(page);
-          // releases chrome.debugger
-          await crxApp.close();
-        }
+      if (url.includes('youtube.com/watch') || url.includes('youtu.be/')) {
+        await handleYouTubeVideo(url, sendResponse);
+      } else {
+        await handleWebPage(tabId, url, sendResponse);
       }
     })();
     return true;

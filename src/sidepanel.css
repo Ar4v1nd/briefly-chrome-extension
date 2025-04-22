@@ -121,6 +121,7 @@ body {
   color: #444;
   margin-bottom: 24px;
   z-index: 1;
+  text-align: center;
 }
 
 .wave {
