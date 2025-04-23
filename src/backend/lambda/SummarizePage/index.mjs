@@ -10,7 +10,7 @@ import {
 
 const googleAi = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: { timeout: 300000 }, // 5 minutes
+  httpOptions: { timeout: 840000 }, // 14 minutes
 });
 const model = process.env.GOOGLE_GENAI_MODEL_ID || 'gemini-2.0-flash';
 const ddbClient = new DynamoDBClient();
@@ -30,10 +30,14 @@ async function getCachedSummary(urlHash) {
 }
 
 async function cacheSummary(urlHash, url, lastModified, summary) {
-  if (typeof lastModified === 'undefined' || lastModified === null) {
+  if (!lastModified) {
     console.warn(
       'lastModified is either undefined or null. Not caching the summary.'
     );
+    return;
+  }
+  if (!summary) {
+    console.warn('Summary is null. Not caching the summary.');
     return;
   }
   console.log('Caching summary');
@@ -124,28 +128,64 @@ async function callGoogleAi(content, isVideo = false) {
     ];
   }
 
-  const response = await googleAi.models.generateContent({
-    model: model,
-    contents: contents,
-    config: {
-      temperature: 0.3,
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          summary: {
-            type: Type.STRING,
-            description: 'Summary in Markdown format',
-            nullable: false,
+  const maxRetries = parseInt(process.env.MAX_RETRIES) || 3;
+  let attempt = 0;
+  let response;
+
+  while (attempt < maxRetries) {
+    try {
+      response = await googleAi.models.generateContent({
+        model: model,
+        contents: contents,
+        config: {
+          temperature: 0.3,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              summary: {
+                type: Type.STRING,
+                description: 'Summary in Markdown format',
+                nullable: false,
+              },
+            },
+            required: ['summary'],
           },
         },
-        required: ['summary'],
-      },
-    },
-  });
-  console.log('Token usage:', response.usageMetadata);
-  let result = JSON.parse(response.text);
-  return result['summary'];
+      });
+      console.log('Token usage:', response.usageMetadata);
+      let result = JSON.parse(response.text);
+      return result['summary'];
+    } catch (error) {
+      attempt++;
+      console.error(`generateContent attempt ${attempt} failed:`, error);
+
+      if (attempt >= maxRetries) {
+        if (isVideo) {
+          throw new Error(
+            `Failed to summarize video even after ${maxRetries} attempts. Check if the video is too long (over 1 hour).`
+          );
+        } else {
+          throw new Error(
+            `Failed to summarize web page even after ${maxRetries} attempts. Check if the page is too long (over 20MB).`
+          );
+        }
+      }
+
+      // Extract status code from error message
+      const statusCodeMatch =
+        error.message && error.message.match(/got status:\s*(\d+)/);
+      const statusCode = statusCodeMatch
+        ? parseInt(statusCodeMatch[1], 10)
+        : null;
+      if (![429, 499, 500, 503, 504].includes(statusCode)) {
+        throw error;
+      }
+
+      console.log(`Retrying... (${attempt}/${maxRetries})`);
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
+    }
+  }
 }
 
 function getVideoIdFromUrl(url) {
@@ -225,10 +265,16 @@ export const handler = async (event) => {
     // Cache the summary in DynamoDB
     await cacheSummary(urlHash, url, lastModified, summary);
 
-    return {
-      statusCode: 200,
-      body: summary,
-    };
+    if (!summary) {
+      throw new Error(
+        'There was an issue with generating the summary. Try again later.'
+      );
+    } else {
+      return {
+        statusCode: 200,
+        body: summary,
+      };
+    }
   } catch (error) {
     console.log(error);
     return {

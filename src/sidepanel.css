@@ -80,6 +80,9 @@ body {
   padding: 2px 4px;
   border-radius: 4px;
   font-family: monospace;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-word;
 }
 
 .markdown-content blockquote {
@@ -88,6 +91,9 @@ body {
   color: #555;
   font-style: italic;
   margin: 8px 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-word;
 }
 
 /****************************************
@@ -166,4 +172,7 @@ body {
 
 .error-text {
   color: #d00;
+  font-size: 18px;
+  font-weight: 600;
+  padding: 8px;
 }
