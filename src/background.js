@@ -75,7 +75,8 @@ async function handleWebPage(tabId, url, sendResponse) {
     const pdfBase64 = bytesToBase64(pdf);
     const lastModified = await getLastModifiedTimestamp(page);
     const lambdaResponse = await fetch(
-      'https://v3r5sdafz2wfoodjgbhdqnucvy0zqtpz.lambda-url.ap-south-1.on.aws/',
+      '<Paste your Lambda function URL here>',
+      // 'https://abcxyz.lambda-url.ap-south-1.on.aws/',
       {
         method: 'POST',
         headers: {
@@ -122,7 +123,8 @@ async function handleWebPage(tabId, url, sendResponse) {
 async function handleYouTubeVideo(url, sendResponse) {
   try {
     const lambdaResponse = await fetch(
-      'https://v3r5sdafz2wfoodjgbhdqnucvy0zqtpz.lambda-url.ap-south-1.on.aws/',
+      '<Paste your Lambda function URL here>',
+      // 'https://abcxyz.lambda-url.ap-south-1.on.aws/',
       {
         method: 'POST',
         headers: {
