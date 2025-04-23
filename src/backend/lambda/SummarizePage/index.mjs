@@ -1,4 +1,5 @@
 import * as crypto from 'crypto';
+import zlib from 'zlib';
 import { GoogleGenAI, Type } from '@google/genai';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
@@ -199,6 +200,29 @@ function getVideoIdFromUrl(url) {
   return null;
 }
 
+async function decompress(base64String) {
+  return new Promise((resolve, reject) => {
+    try {
+      if (typeof base64String !== 'string') {
+        return reject(new Error('Input must be a base64-encoded string'));
+      }
+
+      // Convert base64 string to Buffer
+      const compressedBuffer = Buffer.from(base64String, 'base64');
+
+      zlib.gunzip(compressedBuffer, (err, decompressedData) => {
+        if (err) {
+          return reject(new Error(`Decompression failed: ${err.message}`));
+        }
+
+        resolve(decompressedData.toString('base64')); // Return base64 string
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
 export const handler = async (event) => {
   try {
     let body = event.body;
@@ -211,7 +235,7 @@ export const handler = async (event) => {
     }
     body = JSON.parse(body);
     const url = body.webUrl ? body.webUrl : body.videoUrl;
-    const content = body.content ? body.content : null;
+    const content = body.content ? await decompress(body.content) : null;
     let lastModified = body.lastModified ? body.lastModified : null;
 
     console.log('Lambda got the following URL for summarization: ', url);

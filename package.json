@@ -12,7 +12,9 @@
   },
   "devDependencies": {
     "adm-zip": "^0.5.16",
-    "byte-base64": "^1.1.0",
+    "assert": "^2.1.0",
+    "browserify-zlib": "^0.2.0",
+    "buffer": "^6.0.3",
     "chrome-types": "^0.1.347",
     "copy-webpack-plugin": "^10.2.4",
     "css-loader": "^6.11.0",
@@ -21,6 +23,8 @@
     "mini-css-extract-plugin": "^2.9.2",
     "playwright-crx": "^0.14.0",
     "prettier": "^2.8.8",
+    "stream-browserify": "^3.0.0",
+    "util": "^0.12.5",
     "webpack": "^5.99.6",
     "webpack-cli": "^4.10.0",
     "webpack-merge": "^5.10.0"

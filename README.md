@@ -13,7 +13,7 @@ A Google Chrome extension that helps summarize web pages and youtube videos usin
 
 After cloning the repo:
 
-* Create an AWS Lambda function (with at least 128MB memory and 15-minute timeout) and copy the code from `src/backend/lambda/SummarizePage/index.mjs`.
+* Create an AWS Lambda function (with at least 256MB memory and 15-minute timeout) and copy the code from `src/backend/lambda/SummarizePage/index.mjs`.
 * Add a custom layer for the `@google/genai` npm package.
 * Create a DynamoDB table named `SummaryCacheTable` with `urlHash (string)` as the partition key.
 * Sign up for Google AI Studio and get the API key for the `gemini-2.0-flash` model (or any other model of your choice).

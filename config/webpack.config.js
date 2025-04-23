@@ -13,6 +13,15 @@ const config = (env, argv) =>
       background: PATHS.src + '/background.js',
     },
     devtool: argv.mode === 'production' ? false : 'source-map',
+    resolve: {
+      fallback: {
+        assert: require.resolve('assert'),
+        buffer: require.resolve('buffer'),
+        stream: require.resolve('stream-browserify'),
+        util: require.resolve('util'),
+        zlib: require.resolve('browserify-zlib'),
+      }
+    }
   });
 
 module.exports = config;

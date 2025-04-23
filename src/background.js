@@ -1,7 +1,7 @@
 'use strict';
 
 import { crx, expect } from 'playwright-crx/test';
-import { bytesToBase64 } from 'byte-base64';
+import zlib from 'zlib';
 
 // Allows users to open the side panel by clicking on the action toolbar icon
 chrome.sidePanel
@@ -30,31 +30,64 @@ async function exportAsPdf(page) {
 }
 
 async function getLastModifiedTimestamp(page) {
-  // Get the last modified timestamp from page source
   let lastModified = await page.evaluate(() => {
-    const meta = document.head.querySelector(
-      'meta[property="og:updated_time"]'
-    );
-    return meta ? meta.getAttribute('content') : null;
+    // Check both meta tags in one page evaluation
+    const metaTags = [
+      'meta[property="og:updated_time"]',
+      'meta[property="article:published_time"]',
+    ];
+
+    for (const selector of metaTags) {
+      const meta = document.head.querySelector(selector);
+      if (meta) {
+        const date = meta.getAttribute('content');
+        if (date) {
+          return date;
+        }
+      }
+    }
+
+    return null;
   });
-  // If not found, get the last modified timestamp from article published_time meta tag
-  if (!lastModified) {
-    lastModified = await page.evaluate(() => {
-      const meta = document.head.querySelector(
-        'meta[property="article:published_time"]'
-      );
-      return meta ? meta.getAttribute('content') : null;
-    });
-  }
-  // If not found, fallback to the last modified date in the HTTP headers
+
+  // Try to fetch the last-modified header via fetch inside the page context
   if (!lastModified) {
     lastModified = await page.evaluate(async () => {
-      const resp = await fetch(window.location.href, { method: 'HEAD' });
-      return resp.headers.get('Last-Modified');
+      try {
+        const resp = await fetch(window.location.href, { method: 'HEAD' });
+        const header = resp.headers.get('last-modified');
+        return header ? header : null;
+      } catch (error) {
+        console.error('Error fetching last-modified header:', error);
+        return null;
+      }
     });
   }
+
+  // Fallback to current date if no valid date found
+  if (!lastModified || isNaN(new Date(lastModified).getTime())) {
+    console.warn(
+      'No valid last modified date found. Using current date as fallback.'
+    );
+    // Use current UTC date as fallback
+    lastModified = new Date().toISOString().split('T')[0];
+  }
+
   console.log('Page was last modified on:', lastModified);
   return lastModified;
+}
+
+async function compressAndConvertToBase64(data) {
+  return new Promise((resolve, reject) => {
+    // Compress data using gzip
+    zlib.gzip(data, (err, compressedData) => {
+      if (err) return reject(err);
+
+      // Convert the compressed Buffer to Base64
+      const base64Data = compressedData.toString('base64');
+      resolve(base64Data); // Return Base64 encoded string
+    });
+  });
 }
 
 async function handleWebPage(tabId, url, sendResponse) {
@@ -72,7 +105,8 @@ async function handleWebPage(tabId, url, sendResponse) {
     await forceLoadLazyImages(page);
     // Export page as PDF
     const pdf = await exportAsPdf(page);
-    const pdfBase64 = bytesToBase64(pdf);
+    // Compress the PDF using zlib and convert to base64
+    const compressedPdfBase64 = await compressAndConvertToBase64(pdf);
     const lastModified = await getLastModifiedTimestamp(page);
     const lambdaResponse = await fetch(
       '<Paste your Lambda function URL here>',
@@ -84,7 +118,7 @@ async function handleWebPage(tabId, url, sendResponse) {
         },
         body: JSON.stringify({
           webUrl: url,
-          content: pdfBase64,
+          content: compressedPdfBase64,
           lastModified: lastModified,
         }),
       }
