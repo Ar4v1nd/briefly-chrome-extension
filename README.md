@@ -1,4 +1,4 @@
-# <img style='float: left; margin-right: 5px;' src='public/icons/icon_32.png' alt='briefly-logo'>Briefly
+# <img style='float: left; margin-right: 8px;' src='public/icons/icon_32.png' alt='briefly-logo'>Briefly
 
 A Google Chrome extension that helps summarize web pages and youtube videos using generative AI.
 
