@@ -50,6 +50,10 @@ After cloning the repo:
     npm run build && npm run pack
     ```
 
+## Cost
+
+You are responsible for any costs incurred while using this extension, including charges for AWS services, and Google GenAI models.
+
 ## Contribution
 
 Suggestions and pull requests are welcomed!
