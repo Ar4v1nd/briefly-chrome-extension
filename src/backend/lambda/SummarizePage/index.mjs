@@ -102,9 +102,11 @@ async function callGoogleAi(content, isVideo = false) {
         text: `
         Summarize this video as key-points in valid Markdown format by following the instructions given below:
         1. Identify the main theme/topic of the video and use it as the main heading of the summary.
-        2. Include emojis sparingly in the summary where appropriate.
-        3. Ensure the summary is well formatted and free of markdown violations.
-        4. Skip any preamble or explanation. Provide only the Markdown summary itself.
+        2. Highlight important terms, concepts, or actions using bold.
+        3. Use italic to emphasize nuances, supporting details, or sub-points.
+        4. Include emojis sparingly in the summary where appropriate.
+        5. Ensure the summary is well formatted and free of markdown violations.
+        6. Skip any preamble or explanation. Provide only the Markdown summary itself.
         `,
       },
     ];
@@ -115,9 +117,11 @@ async function callGoogleAi(content, isVideo = false) {
         Summarize this web page as key-points in valid Markdown format by following the instructions given below:
         1. Identify the main theme/topic of the web page and use it as the main heading of the summary.
         2. Ignore extraneous content like author bios, introductory fluff, or purely decorative images unless they convey key technical information. Focus solely on the core message and technical details.
-        3. Include emojis sparingly in the summary where appropriate.
-        4. Ensure the summary is well formatted and free of markdown violations.
-        5. Skip any preamble or explanation. Provide only the Markdown summary itself.
+        3. Highlight important terms, concepts, or actions using bold.
+        4. Use italic to emphasize nuances, supporting details, or sub-points.
+        5. Include emojis sparingly in the summary where appropriate.
+        6. Ensure the summary is well formatted and free of markdown violations.
+        7. Skip any preamble or explanation. Provide only the Markdown summary itself.
         `,
       },
       {
